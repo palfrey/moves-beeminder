@@ -14,7 +14,9 @@
 		[ring "1.2.1"]
 		[clj-time "0.6.0"]
 	]
+	:uberjar-name "moves-beeminder-standalone.jar"
 	:plugins [[lein-ring "0.8.7"]]
 	:main moves-beeminder.core
 	:ring {:handler moves-beeminder.core/app :port 8080}
+	:min-lein-version "2.0.0"
 )

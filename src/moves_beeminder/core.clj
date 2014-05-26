@@ -173,4 +173,6 @@
 
 (def app (-> #'all-routes wrap-keyword-params wrap-params wrap-cookies wrap-stacktrace (wrap-session {:store (cookie-store {:key "a 16-byte secret"})}) ))
 
-;(run-server app {:port 8080})
+(defn -main [port]
+  (run-server app {:port (Integer. port)})
+)
