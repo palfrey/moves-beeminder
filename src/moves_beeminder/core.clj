@@ -1,4 +1,5 @@
 (ns moves-beeminder.core
+	(:refer-clojure :exclude [replace])
 	(:use
 		[compojure.handler :only [site]]
 		[compojure.core :only [defroutes GET POST]]
@@ -237,11 +238,13 @@
 								beeminder-chosen-goal "/datapoints.json?access_token=" beeminder-access-token)))))
 			datapoints (apply merge (map #(sorted-map (coerce/to-epoch (dt-at-midnight (coerce/from-long (* (:timestamp %) 1000)))) %) raw-data))
 			]
-		(doseq [key (keys moves-data)]
+		{:goal beeminder-chosen-goal
+		 :user beeminder-username
+		 :results
+		(for [key (keys moves-data)]
 		  (let [key-when (coerce/to-epoch key)]
-			(prn datapoints)
 		  	(cond (not (contains? datapoints key-when))
-				  	(prn @(http/post (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
+				  	@(http/post (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
 									 {:form-params {
 													 "access_token" beeminder-access-token
 													 "timestamp" key-when
@@ -250,9 +253,9 @@
 													 }
 									  }
 
-					 ))
+					 )
 				  (not= (int (:value (datapoints key-when))) (moves-data key))
-				  (prn @(http/put (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
+				  @(http/put (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
 									 {:query-params {
 													 "timestamp" key-when
 													 "value" (moves-data key)
@@ -260,21 +263,41 @@
 													 }
 									  }
 
-					))
+					)
+			 )
+		   )
+		  )}
+		)
+	  )
+	)
+  )
+
+(defn import-page [req]
+	(let [email (get-session req :email)]
+		(if (empty? email)
+			(redirect (:uri auth/auth-req))
+			(let [
+				  {:keys [goal user results]} (import-data email)
+				]
+			  	(render-resource "templates/import.html"
+					 {
+					  	:beeminder-username user
+					  	:beeminder-chosen-goal goal
+					  	:import-results (pp results)
+					 }
 				)
 			)
 		)
-		)
-	 )
 	)
-  )
+)
 
 (defroutes all-routes
 	(GET "/" [] main-page)
 	(GET "/authentication/callback" [] auth-callback)
 	(GET "/moves_auth" [] moves-auth-callback)
 	(GET "/beeminder_auth" [] beeminder-auth-callback)
-  	(POST "/beeminder/set-goal" [] beeminder-set-goal)
+	(POST "/beeminder/set-goal" [] beeminder-set-goal)
+	(GET "/import" [] import-page)
 	(route/files "/" {:root "public"})
 	;(route/not-found "Page not found")
 )
