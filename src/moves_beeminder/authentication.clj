@@ -1,6 +1,6 @@
 (ns moves-beeminder.authentication
 	(:use
-		[moves-beeminder.secrets]
+		[moves-beeminder.config]
 	)
 	(:require
 		[cheshire.core :refer [parse-string]]
@@ -15,7 +15,7 @@
 	{
   		:authorization-uri (str login-uri "/o/oauth2/auth")
 		:access-token-uri (str login-uri "/o/oauth2/token")
-		:redirect-uri "http://localhost:8080/authentication/callback"
+		:redirect-uri (str base-url "/authentication/callback")
 		:client-id google-client-id
 		:client-secret google-client-secret
 		:access-query-param :access_token

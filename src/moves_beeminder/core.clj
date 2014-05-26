@@ -15,7 +15,7 @@
 		[ring.middleware.session.cookie :only [cookie-store]]
 		[ring.middleware.session :only [wrap-session]]
 		[taoensso.carmine :as car :refer (wcar)]
-		[moves-beeminder.secrets]
+		[moves-beeminder.config]
 	)
 	(:require
 		[clojure.string :as str]

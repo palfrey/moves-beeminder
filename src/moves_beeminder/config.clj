@@ -1,4 +1,4 @@
-(ns moves-beeminder.secrets
+(ns moves-beeminder.config
   (:use
    [environ.core :only [env]]
   )
@@ -12,3 +12,5 @@
 
 (def google-client-id (env :google-client-id))
 (def google-client-secret (env :google-client-secret))
+
+(def base-url (env :base-url))
