@@ -9,6 +9,3 @@ pom.xml.asc
 /.nrepl-port
 !src
 .DS_Store
-
-# don't include local secrets
-src/moves_beeminder/secrets.clj

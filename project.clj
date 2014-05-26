@@ -13,6 +13,7 @@
 		[com.taoensso/carmine "2.4.5"]
 		[ring "1.2.1"]
 		[clj-time "0.6.0"]
+		[environ "0.5.0"]
 	]
 	:uberjar-name "moves-beeminder-standalone.jar"
 	:plugins [[lein-ring "0.8.7"]]
