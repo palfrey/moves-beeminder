@@ -219,12 +219,19 @@
 	(time/date-time (time/year dt) (time/month dt) (time/day dt))
 )
 
-(defn import-data [email]
+(defn get-moves-data [email]
   (let [
-		moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
+  		moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
 		moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
 		moves-data (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=7" {:oauth-token moves-access-token})))
-		moves-data (compact-moves-data moves-data)
+	]
+	(compact-moves-data moves-data)
+  )
+)
+
+(defn import-data [email]
+  (let [
+		moves-data (get-moves-data email)
 		beeminder-username (wcar* (car/hget (beeminder-redis-key email) :username))
 		beeminder-access-token (beeminder-get-token email)
 		beeminder-goals (beeminder-goals-list beeminder-access-token)
