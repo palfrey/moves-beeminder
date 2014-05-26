@@ -112,8 +112,6 @@
 			(let [
 					moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
 					moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
-					moves-data (if (blank? moves-access-token) {} (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=7" {:oauth-token moves-access-token}))))
-					moves-data (compact-moves-data moves-data)
 					beeminder-username (wcar* (car/hget (beeminder-redis-key email) :username))
 					beeminder-access-token (beeminder-get-token email)
 					beeminder-goals (beeminder-goals-list beeminder-access-token)
@@ -126,7 +124,6 @@
 						:base-url base-url
 						:moves-account moves-account
 						:moves-client-id moves-client-id
-						:moves-data (map #(hash-map :key (format/unparse (format/formatters :date) (first %)) :value (second %)) (seq moves-data))
 						:beeminder-username beeminder-username
 						:beeminder-client-id beeminder-client-id
 						:beeminder-goals (-> beeminder-goals beeminder-add-no-goal displayable-hashmap ((partial set-checked-goal beeminder-chosen-goal)))
@@ -214,6 +211,63 @@
 		)
 	)
 )
+
+(def beeminder-base "https://www.beeminder.com/api/v1/users/me")
+
+(defn dt-at-midnight [dt]
+	(time/date-time (time/year dt) (time/month dt) (time/day dt))
+)
+
+(defn import-data [email]
+  (let [
+		moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
+		moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
+		moves-data (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=7" {:oauth-token moves-access-token})))
+		moves-data (compact-moves-data moves-data)
+		beeminder-username (wcar* (car/hget (beeminder-redis-key email) :username))
+		beeminder-access-token (beeminder-get-token email)
+		beeminder-goals (beeminder-goals-list beeminder-access-token)
+		beeminder-chosen-goal (wcar* (car/hget (beeminder-redis-key email) :chosen-goal))
+		beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
+		]
+	(if (= beeminder-chosen-goal "") (throw (Exception. "No valid goal set!"))
+	  (let [
+			raw-data (keywordize-keys (read-str (:body
+				@(http/get (str beeminder-base "/goals/"
+								beeminder-chosen-goal "/datapoints.json?access_token=" beeminder-access-token)))))
+			datapoints (apply merge (map #(sorted-map (coerce/to-epoch (dt-at-midnight (coerce/from-long (* (:timestamp %) 1000)))) %) raw-data))
+			]
+		(doseq [key (keys moves-data)]
+		  (let [key-when (coerce/to-epoch key)]
+			(prn datapoints)
+		  	(cond (not (contains? datapoints key-when))
+				  	(prn @(http/post (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
+									 {:form-params {
+													 "access_token" beeminder-access-token
+													 "timestamp" key-when
+													 "value" (moves-data key)
+													 "comment" (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
+													 }
+									  }
+
+					 ))
+				  (not= (int (:value (datapoints key-when))) (moves-data key))
+				  (prn @(http/put (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
+									 {:query-params {
+													 "timestamp" key-when
+													 "value" (moves-data key)
+													 "comment" (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
+													 }
+									  }
+
+					))
+				)
+			)
+		)
+		)
+	 )
+	)
+  )
 
 (defroutes all-routes
 	(GET "/" [] main-page)
