@@ -16,9 +16,9 @@
 		[ring.middleware.session :only [wrap-session]]
 		[taoensso.carmine :as car :refer (wcar)]
 		[moves-beeminder.config]
+	 	[clojure.string :only [replace blank?]]
 	)
 	(:require
-		[clojure.string :as str]
 		[clj-time.core :as time]
 		[clj-time.coerce :as coerce]
 		[clj-time.format :as format]
@@ -52,7 +52,7 @@
 (defmacro wcar* [& body] `(car/wcar server-conn ~@body))
 
 (defn redis-key [& args]
-	(apply car/key (map #(str/replace % "." "_") args))
+	(apply car/key (map #(replace % "." "_") args))
 )
 
 (defn kv-to-hashmap [kv]
@@ -86,7 +86,7 @@
 			(let [
 					moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
 					moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
-					moves-data (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=7" {:oauth-token moves-access-token})))
+					moves-data (if (blank? moves-access-token) {} (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=7" {:oauth-token moves-access-token}))))
 					moves-data (compact-moves-data moves-data)
 					beeminder-username (wcar* (car/hget (beeminder-redis-key email) :username))
 					beeminder-access-token (wcar* (car/hget (beeminder-redis-key email) :access_token))
