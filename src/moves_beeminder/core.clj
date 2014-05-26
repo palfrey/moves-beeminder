@@ -95,6 +95,7 @@
 				(render-resource "templates/index.html"
 					 {
 						:email email
+						:base-url base-url
 						:moves-account moves-account
 						:moves-client-id moves-client-id
 						:moves-data (map #(hash-map :key (format/unparse (format/formatters :date) (first %)) :value (second %)) (seq moves-data))
@@ -113,7 +114,8 @@
 			email (get-session req :email)
 			code (-> req :params :code)
 			post_url (str "https://api.moves-app.com/oauth/v1/access_token?grant_type=authorization_code&code="
-										code "&client_id=" moves-client-id "&client_secret=" moves-client-secret)
+										code "&client_id=" moves-client-id "&client_secret=" moves-client-secret
+						  "&redirect_uri=" base-url "/moves_auth")
 			result @(http/post post_url)
 			body (read-str (:body result))
 			{:keys [access_token expires_in refresh_token user_id]} (keywordize-keys body)
