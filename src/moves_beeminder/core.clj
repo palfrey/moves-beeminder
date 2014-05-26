@@ -249,9 +249,12 @@
 		 :user beeminder-username
 		 :results
 		(for [key (keys moves-data)]
-		  (let [key-when (coerce/to-epoch key)]
-		  	(cond (not (contains? datapoints key-when))
-				  	@(http/post (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
+			(let [key-when (coerce/to-epoch key)]
+			(cond
+				(nil? (moves-data key))
+					{:warning (str "empty moves data for " (format/unparse (format/formatters :date) key))}
+				(not (contains? datapoints key-when))
+					@(http/post (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
 									 {:form-params {
 													 "access_token" beeminder-access-token
 													 "timestamp" key-when
@@ -259,17 +262,15 @@
 													 "comment" (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
 													 }
 									  }
-
 					 )
-				  (not= (int (:value (datapoints key-when))) (moves-data key))
-				  @(http/put (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
-									 {:query-params {
+				(not= (int (:value (datapoints key-when))) (moves-data key))
+					@(http/put (str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
+									{:query-params {
 													 "timestamp" key-when
 													 "value" (moves-data key)
 													 "comment" (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
 													 }
-									  }
-
+									}
 					)
 			 )
 		   )
