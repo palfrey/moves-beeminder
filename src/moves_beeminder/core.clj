@@ -48,7 +48,7 @@
 	(keywordize-keys (read-str (get-session req :token)))
 )
 
-(def server-conn {})
+(def server-conn {:spec redis-spec})
 (defmacro wcar* [& body] `(car/wcar server-conn ~@body))
 
 (defn redis-key [& args]

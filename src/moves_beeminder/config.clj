@@ -14,3 +14,11 @@
 (def google-client-secret (env :google-client-secret))
 
 (def base-url (env :base-url))
+
+(def redis-host (env :redis-host))
+(def redis-port (env :redis-port))
+(def redis-password (env :redis-password))
+
+;(def redis-spec {:host redis-host :port redis-port :password redis-password})
+
+(def redis-spec {:uri (env :rediscloud-url)})
