@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Moves Beeminder import</title>
+
+		<!-- Bootstrap -->
+		<link href="css/bootstrap.min.css" rel="stylesheet">
+
+		<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+		<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+		<!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+	</head>
+	<body>
+		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+		<!-- Include all compiled plugins (below), or include individual files as needed -->
+		<script src="js/bootstrap.min.js"></script>
+		<div class="container-fluid">
+			<h1>Moves Beeminder import</h1>
+			<div class="row">
+				<div class="col-md-7">
+					<ul>
+						<li>Email is {{email}}</li>
+						<li>
+							{{#moves-account}}Moves account is {{moves-account}}{{/moves-account}}
+							{{^moves-account}}<a href="https://api.moves-app.com/oauth/v1/authorize?response_type=code&client_id={{moves-client-id}}&scope=activity">Authenticate with Moves</a>{{/moves-account}}
+						</li>
+						<li>
+							{{#beeminder-username}}Beeminder username is {{beeminder-username}}{{/beeminder-username}}
+							{{^beeminder-username}}<a href="https://www.beeminder.com/apps/authorize?client_id={{beeminder-client-id}}&redirect_uri=http://localhost:8080/beeminder_auth&response_type=token">Authenticate with Beeminder</a>{{/beeminder-username}}
+						</li>
+					</ul>
+					Moves data <ul>{{#moves-data}}<li>{{key}} - {{value}}</li>{{/moves-data}}</ul>
+					Beeminder goals <ul>{{#beeminder-goals}}<li>{{.}}</li>{{/beeminder-goals}}</ul>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

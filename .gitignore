@@ -1,0 +1,14 @@
+/target
+/classes
+/checkouts
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/.lein-*
+/.nrepl-port
+!src
+.DS_Store
+
+# don't include local secrets
+src/moves_beeminder/secrets.clj
