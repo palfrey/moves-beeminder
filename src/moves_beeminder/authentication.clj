@@ -1,30 +1,30 @@
 (ns moves-beeminder.authentication
 	(:use
 		[moves-beeminder.config]
-	)
+		)
 	(:require
 		[cheshire.core :refer [parse-string]]
 		[clj-oauth2.client :as oauth2]
+		)
 	)
-)
 
 (def login-uri
 	"https://accounts.google.com")
 
 (def google-com-oauth2
 	{
-  		:authorization-uri (str login-uri "/o/oauth2/auth")
-		:access-token-uri (str login-uri "/o/oauth2/token")
-		:redirect-uri (str base-url "/authentication/callback")
-		:client-id google-client-id
-		:client-secret google-client-secret
+		:authorization-uri  (str login-uri "/o/oauth2/auth")
+		:access-token-uri   (str login-uri "/o/oauth2/token")
+		:redirect-uri       (str base-url "/authentication/callback")
+		:client-id          google-client-id
+		:client-secret      google-client-secret
 		:access-query-param :access_token
-		:scope ["email"]
-		:grant-type "authorization_code"
-		:access-type "online"
-		:approval_prompt ""
-  	}
- )
+		:scope              ["email"]
+		:grant-type         "authorization_code"
+		:access-type        "online"
+		:approval_prompt    ""
+		}
+	)
 
 (def auth-req
 	(oauth2/make-auth-request google-com-oauth2))
@@ -34,4 +34,6 @@
 
 (defn google-user-email [access-token]
 	(let [response (oauth2/get "https://www.googleapis.com/oauth2/v1/userinfo" {:oauth2 access-token :throw-exceptions true})]
-		(get (parse-string (:body response)) "email")))
+		(get (parse-string (:body response)) "email")
+		)
+	)
