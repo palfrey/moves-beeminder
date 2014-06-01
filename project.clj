@@ -22,7 +22,6 @@
 	   [com.newrelic.agent.java/newrelic-agent "3.7.0"]
 	  ]
 	  :java-agents [[com.newrelic.agent.java/newrelic-agent "3.7.0"]]
-	  :manifest {"Premain-Class" "com.newrelic.bootstrap.BootstrapAgent"}
 	 }
 	}
 	:plugins [[lein-ring "0.8.7"]]
