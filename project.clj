@@ -16,6 +16,14 @@
 		[environ "0.5.0"]
 	]
 	:uberjar-name "moves-beeminder-standalone.jar"
+	:profiles {
+	 :uberjar  {
+	  :dependencies [
+	   [com.newrelic.agent.java/newrelic-agent "3.7.0"]
+	  ]
+	  :java-agents [[com.newrelic.agent.java/newrelic-agent "3.7.0"]]
+	 }
+	}
 	:plugins [[lein-ring "0.8.7"]]
 	:ring {:handler moves-beeminder.core/app :port 8080}
 	:min-lein-version "2.0.0"
