@@ -18,7 +18,7 @@
 	:uberjar-name "moves-beeminder-standalone.jar"
 	:profiles {
 	 :uberjar  {
-	  :offline true
+	  :offline? true
 	  :dependencies [
 	   [com.newrelic.agent.java/newrelic-agent "3.7.0"]
 	  ]
