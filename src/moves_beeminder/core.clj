@@ -1,5 +1,4 @@
 (ns moves-beeminder.core
-	(:refer-clojure :exclude [replace])
 	(:use
 		[compojure.handler :only [site]]
 		[compojure.core :only [defroutes GET POST]]
@@ -17,8 +16,7 @@
 		[ring.middleware.session :only [wrap-session]]
 		[taoensso.carmine :as car :refer (wcar)]
 		[moves-beeminder.config]
-		[clojure.string :only [replace blank?]]
-		)
+	)
 	(:require
 		[clj-time.core :as time]
 		[clj-time.coerce :as coerce]
@@ -26,8 +24,9 @@
 		[compojure.route :as route :only [files not-found]]
 		[org.httpkit.client :as http]
 		[clojure.pprint :as pprint]
-		)
+		[clojure.string :as str]
 	)
+)
 
 (defn auth-callback [req]
 	(let [token (auth/google-access-token req)]
@@ -53,7 +52,7 @@
 (defmacro wcar* [& body] `(car/wcar server-conn ~@body))
 
 (defn redis-key [& args]
-	(apply car/key (map #(replace % "." "_") args))
+	(apply car/key (map #(str/replace % "." "_") args))
 	)
 
 (defn kv-to-hashmap [kv]
@@ -304,29 +303,44 @@
 			(let
 				[
 					{:keys [goal user results]} (import-data email)
-					]
+				]
 				(render-resource "templates/import.html"
-								 {
-									 :beeminder-username    user
-									 :beeminder-chosen-goal goal
-									 :import-results        (pp results)
-									 }
-								 )
+					{
+						:beeminder-username    user
+						:beeminder-chosen-goal goal
+						:import-results        (pp results)
+					}
 				)
 			)
 		)
 	)
+)
+
+(defn beeminder-auth-fix [req]
+	(let
+		[
+			keys (wcar* (car/keys "*:beeminder"))
+			emails (map #(first (str/split % #":")) keys)
+		]
+		(render-resource "templates/authfix.html"
+			{
+				:emails (list emails)
+			}
+		)
+	)
+)
 
 (defroutes all-routes
-		   (GET "/" [] main-page)
-		   (GET "/authentication/callback" [] auth-callback)
-		   (GET "/moves_auth" [] moves-auth-callback)
-		   (GET "/beeminder_auth" [] beeminder-auth-callback)
-		   (POST "/beeminder/set-goal" [] beeminder-set-goal)
-		   (GET "/import" [] import-page)
-		   (route/files "/" {:root "public"})
-		   (route/not-found "Page not found")
-		   )
+	(GET "/" [] main-page)
+	(GET "/authentication/callback" [] auth-callback)
+	(GET "/moves_auth" [] moves-auth-callback)
+	(GET "/beeminder_auth" [] beeminder-auth-callback)
+	(POST "/beeminder/set-goal" [] beeminder-set-goal)
+	(GET "/import" [] import-page)
+	(GET "/beeminder-auth-fix" [] beeminder-auth-fix)
+	(route/files "/" {:root "public"})
+	(route/not-found "Page not found")
+)
 
 (def app (-> #'all-routes wrap-keyword-params wrap-params wrap-cookies wrap-stacktrace (wrap-session {:store (cookie-store {:key "a 16-byte secret"})})))
 
