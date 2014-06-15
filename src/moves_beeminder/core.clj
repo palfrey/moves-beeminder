@@ -231,56 +231,60 @@
 			beeminder-chosen-goal (wcar* (car/hget (beeminder-redis-key email) :chosen-goal))
 			beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
 			]
-		(if (= beeminder-chosen-goal "") (throw (Exception. "No valid goal set!"))
-										 (let [
-												  raw-data (keywordize-keys (read-str (:body
-																					   @(http/get
-																							(str beeminder-base "/goals/"
-																								 beeminder-chosen-goal "/datapoints.json?access_token=" beeminder-access-token)
-																							)
-																					   )))
-												  datapoints (apply merge (map #(sorted-map (coerce/to-epoch (dt-at-midnight (coerce/from-long (* (:timestamp %) 1000)))) %) raw-data))
-												  ]
-											 {
-												 :goal beeminder-chosen-goal
-												 :user beeminder-username
-												 :results
-													   (for [key (keys moves-data)]
-														   (let [key-when (coerce/to-epoch key)]
-															   (cond
-																   (nil? (moves-data key))
-																   {:warning (str "empty moves data for " (format/unparse (format/formatters :date) key))}
-																   (not (contains? datapoints key-when))
-																   @(http/post
-																		(str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
-																		{:form-params
-																			{
-																				"access_token" beeminder-access-token
-																				"timestamp"    key-when
-																				"value"        (moves-data key)
-																				"comment"      (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
-																				}
-																		 }
-																		)
-																   (not= (int (:value (datapoints key-when))) (moves-data key))
-																   @(http/put
-																		(str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
-																		{:query-params
-																			{
-																				"timestamp" key-when
-																				"value"     (moves-data key)
-																				"comment"   (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
-																				}
-																		 }
-																		)
-																   )
-															   )
-														   )
-												 }
-											 )
-										 )
+		(if (= beeminder-chosen-goal "")
+			(throw (Exception. "No valid goal set!"))
+			(let
+				[
+					raw-data
+					(-> @(http/get
+						(str beeminder-base "/goals/"
+							beeminder-chosen-goal "/datapoints.json?access_token=" beeminder-access-token)
+						)
+						:body read-str keywordize-keys
+					)
+					datapoints (apply merge (map #(sorted-map (coerce/to-epoch (dt-at-midnight (coerce/from-long (* (:timestamp %) 1000)))) %) raw-data))
+				]
+				{
+					:goal beeminder-chosen-goal
+					:user beeminder-username
+					:results
+					(for
+						[key (keys moves-data)]
+						(let [key-when (coerce/to-epoch key)]
+							(cond
+								(nil? (moves-data key))
+									{:warning (str "empty moves data for " (format/unparse (format/formatters :date) key))}
+								(not (contains? datapoints key-when))
+									@(http/post
+										(str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
+										{:form-params
+											{
+												"access_token" beeminder-access-token
+												"timestamp"    key-when
+												"value"        (moves-data key)
+												"comment"      (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
+											}
+										}
+									)
+								(not= (int (:value (datapoints key-when))) (moves-data key))
+									@(http/put
+										(str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
+										{:query-params
+											{
+												"timestamp" key-when
+												"value"     (moves-data key)
+												"comment"   (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
+											}
+										}
+									)
+							)
+						)
+					)
+				}
+			)
 		)
 	)
+)
 
 (defn import-page [req]
 	(let
