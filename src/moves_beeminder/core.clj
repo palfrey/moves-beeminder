@@ -63,12 +63,12 @@
 	(Long/parseLong (re-find #"\d+" s))
 	)
 
-(defn moves-redis-key [email]
-	(redis-key email "moves")
+(defn moves-redis-key [username]
+	(redis-key username "moves")
 	)
 
-(defn beeminder-redis-key [email]
-	(redis-key email "beeminder")
+(defn beeminder-redis-key [username]
+	(redis-key username "beeminder")
 	)
 
 (defn compact-moves-date [data]
@@ -316,12 +316,31 @@
 	)
 )
 
+(defn substring?
+	"is 'sub' in 'str'?"
+	[sub str]
+	(not= (.indexOf str sub) -1)
+)
+
 (defn beeminder-auth-fix [req]
 	(let
 		[
 			keys (wcar* (car/keys "*:beeminder"))
-			emails (map #(first (str/split % #":")) keys)
+			emails (filter #(substring? "@" %) (map #(first (str/split % #":")) keys))
 		]
+		(doseq [email emails]
+			(let
+				[
+					beeminder (-> (beeminder-redis-key email) car/hgetall* wcar* keywordize-keys)
+					username (:username beeminder)
+					moves (-> (moves-redis-key email) car/hgetall* wcar* keywordize-keys)
+				]
+				(wcar*
+					(car/hmset* (beeminder-redis-key username) beeminder)
+					(car/hmset* (moves-redis-key username) moves)
+				)
+			)
+		)
 		(render-resource "templates/authfix.html"
 			{
 				:emails (list emails)
