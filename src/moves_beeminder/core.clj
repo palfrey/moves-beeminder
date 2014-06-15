@@ -218,8 +218,6 @@
 		)
 	)
 
-(get-moves-data "palfrey@gmail.com")
-
 (defn import-data [email]
 	(let
 		[
