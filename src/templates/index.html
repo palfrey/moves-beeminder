@@ -40,17 +40,16 @@
 			<div class="active row" id="home">
 				<div class="col-md-7">
 					<h3>Account info</h3>
-					<ul>
-						<li>Email is {{email}}</li>
-						<li>
-							{{#moves-account}}Moves account is {{moves-account}}{{/moves-account}}
-							{{^moves-account}}<a href="https://api.moves-app.com/oauth/v1/authorize?response_type=code&client_id={{moves-client-id}}&scope=activity&redirect_uri={{base-url}}/moves_auth">Authenticate with Moves</a>{{/moves-account}}
-						</li>
+					<ol>
 						<li>
 							{{#beeminder-username}}Beeminder username is {{beeminder-username}}{{/beeminder-username}}
 							{{^beeminder-username}}<a href="https://www.beeminder.com/apps/authorize?client_id={{beeminder-client-id}}&redirect_uri={{base-url}}/beeminder_auth&response_type=token">Authenticate with Beeminder</a>{{/beeminder-username}}
 						</li>
-					</ul>
+						<li>
+							{{#moves-account}}Moves account is {{moves-account}}{{/moves-account}}
+							{{^moves-account}}<a href="https://api.moves-app.com/oauth/v1/authorize?response_type=code&client_id={{moves-client-id}}&scope=activity&redirect_uri={{base-url}}/moves_auth">Authenticate with Moves</a>{{/moves-account}}
+						</li>
+					</ol>
 					<a href="/import" class="btn btn-danger active" role="button">Import data</a>
 				</div>
 			</div>
