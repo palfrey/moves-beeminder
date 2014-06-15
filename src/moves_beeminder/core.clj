@@ -317,9 +317,11 @@
 					username (:username beeminder)
 					moves (-> (moves-redis-key email) car/hgetall* wcar* keywordize-keys)
 				]
-				(wcar*
-					(car/hmset* (beeminder-redis-key username) beeminder)
-					(car/hmset* (moves-redis-key username) moves)
+				(if (not (nil? username))
+					(wcar*
+						(car/hmset* (beeminder-redis-key username) beeminder)
+						(car/hmset* (moves-redis-key username) moves)
+					)
 				)
 			)
 		)
