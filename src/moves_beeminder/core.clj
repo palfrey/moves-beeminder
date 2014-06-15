@@ -120,7 +120,7 @@
 (defn moves-auth-callback [req]
 	(let
 		[
-			email (get-session req :email)
+			username (get-session req :beeminder-username)
 			code (-> req :params :code)
 			post_url (str "https://api.moves-app.com/oauth/v1/access_token?grant_type=authorization_code&code="
 						  code "&client_id=" moves-client-id "&client_secret=" moves-client-secret
@@ -130,16 +130,19 @@
 			{:keys [access_token expires_in refresh_token user_id]} (keywordize-keys body)
 			]
 		(do
-			(wcar* (car/hmset (moves-redis-key email)
-							  :user_id user_id
-							  :access-token access_token
-							  :refresh_token refresh_token
-							  :expires (coerce/to-long (time/plus (time/now) (time/seconds expires_in)))
-							  ))
-			(redirect "/")
+			(wcar*
+				(car/hmset
+					(moves-redis-key username)
+					:user_id user_id
+					:access-token access_token
+					:refresh_token refresh_token
+					:expires (coerce/to-long (time/plus (time/now) (time/seconds expires_in)))
+				)
 			)
+			(redirect "/")
 		)
 	)
+)
 
 (defn beeminder-auth-callback [req]
 	(let
