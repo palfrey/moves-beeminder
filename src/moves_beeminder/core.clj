@@ -4,7 +4,6 @@
 		[compojure.core :only [defroutes GET POST]]
 		[org.httpkit.server :only [run-server]]
 		[clostache.parser :as parser]
-		[moves-beeminder.authentication :as auth]
 		[ring.middleware.params :only [wrap-params]]
 		[ring.middleware.keyword-params :only [wrap-keyword-params]]
 		[ring.middleware.cookies :only [wrap-cookies]]
@@ -186,26 +185,21 @@
 (defn beeminder-set-goal [req]
 	(let
 		[
-			email (get-session req :email)
+			username (get-session req :beeminder-username)
 			goal (-> req :params :goal)
-			goals (beeminder-goals-list (beeminder-get-token email))
-			]
-		(if (empty? email)
-			(redirect (:uri auth/auth-req))
-			(do
-				(wcar* (car/hset (beeminder-redis-key email) :chosen-goal goal))
-				(redirect
-					(str "/?message= "
-						 (if (= goal "")
-							 "Successfully cleared Beeminder goal"
-							 (str "Successfully set Beeminder goal \"" (goals goal) "\"")
-							 )
-						 )
-					)
+			goals (beeminder-goals-list (beeminder-get-token username))
+		]
+		(wcar* (car/hset (beeminder-redis-key username) :chosen-goal goal))
+		(redirect
+			(str "/?message= "
+				(if (= goal "")
+					"Successfully cleared Beeminder goal"
+					(str "Successfully set Beeminder goal \"" (goals goal) "\"")
 				)
 			)
 		)
 	)
+)
 
 (def beeminder-base "https://www.beeminder.com/api/v1/users/me")
 
@@ -288,21 +282,18 @@
 	)
 
 (defn import-page [req]
-	(let [email (get-session req :email)]
-		(if (empty? email)
-			(redirect (:uri auth/auth-req))
-			(let
-				[
-					{:keys [goal user results]} (import-data email)
-				]
-				(render-resource "templates/import.html"
-					{
-						:beeminder-username    user
-						:beeminder-chosen-goal goal
-						:import-results        (pp results)
-					}
-				)
-			)
+	(let
+		[
+			username (get-session req :beeminder-username)
+			{:keys [goal user results]} (import-data username)
+		]
+		(render-resource
+			"templates/import.html"
+			{
+				:beeminder-username    user
+				:beeminder-chosen-goal goal
+				:import-results        (pp results)
+			}
 		)
 	)
 )
@@ -342,7 +333,6 @@
 
 (defroutes all-routes
 	(GET "/" [] main-page)
-	(GET "/authentication/callback" [] auth-callback)
 	(GET "/moves_auth" [] moves-auth-callback)
 	(GET "/beeminder_auth" [] beeminder-auth-callback)
 	(POST "/beeminder/set-goal" [] beeminder-set-goal)
