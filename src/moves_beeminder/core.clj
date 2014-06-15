@@ -28,25 +28,9 @@
 	)
 )
 
-(defn auth-callback [req]
-	(let [token (auth/google-access-token req)]
-		(assoc
-			(redirect "/")
-			:session {
-						 :token (write-str token)
-						 :email (auth/google-user-email token)
-						 }
-			)
-		)
-	)
-
 (defn get-session [req key]
 	(-> req :session (get key))
-	)
-
-(defn get-token [req]
-	(keywordize-keys (read-str (get-session req :token)))
-	)
+)
 
 (def server-conn {:spec redis-spec})
 (defmacro wcar* [& body] `(car/wcar server-conn ~@body))
@@ -106,35 +90,32 @@
 	)
 
 (defn main-page [req]
-	(let [email (get-session req :email)]
-		(if (empty? email)
-			(redirect (:uri auth/auth-req))
-			(let [
-					 moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
-					 moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
-					 beeminder-username (wcar* (car/hget (beeminder-redis-key email) :username))
-					 beeminder-access-token (beeminder-get-token email)
-					 beeminder-goals (beeminder-goals-list beeminder-access-token)
-					 beeminder-chosen-goal (wcar* (car/hget (beeminder-redis-key email) :chosen-goal))
-					 beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
-					 ]
-				(render-resource "templates/index.html"
-								 {
-									 :email                 email
-									 :base-url              base-url
-									 :moves-account         moves-account
-									 :moves-client-id       moves-client-id
-									 :beeminder-username    beeminder-username
-									 :beeminder-client-id   beeminder-client-id
-									 :beeminder-goals       (-> beeminder-goals beeminder-add-no-goal displayable-hashmap ((partial set-checked-goal beeminder-chosen-goal)))
-									 :beeminder-chosen-goal beeminder-chosen-goal
-									 :message               (-> req :params :message)
-									 }
-								 )
-				)
-			)
+	(let
+		[
+			beeminder-username (get-session req :beeminder-username)
+			logged-in (not (nil? beeminder-username))
+			moves-account (if logged-in (wcar* (car/hget (moves-redis-key beeminder-username) :user_id)))
+			moves-access-token (if logged-in (wcar* (car/hget (moves-redis-key beeminder-username) :access-token)))
+			beeminder-access-token (if logged-in (beeminder-get-token beeminder-username))
+			beeminder-goals (if logged-in (beeminder-goals-list beeminder-access-token))
+			beeminder-chosen-goal (if logged-in (wcar* (car/hget (beeminder-redis-key beeminder-username) :chosen-goal)))
+			beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
+		]
+		(render-resource
+			"templates/index.html"
+			{
+				:base-url              base-url
+				:moves-account         moves-account
+				:moves-client-id       moves-client-id
+				:beeminder-username    beeminder-username
+				:beeminder-client-id   beeminder-client-id
+				:beeminder-goals       (-> beeminder-goals beeminder-add-no-goal displayable-hashmap ((partial set-checked-goal beeminder-chosen-goal)))
+				:beeminder-chosen-goal beeminder-chosen-goal
+				:message               (-> req :params :message)
+			}
 		)
 	)
+)
 
 (defn moves-auth-callback [req]
 	(let
@@ -163,7 +144,6 @@
 (defn beeminder-auth-callback [req]
 	(let
 		[
-			email (get-session req :email)
 			access_token (-> req :params :access_token)
 			username (-> req :params :username)
 			]
@@ -178,19 +158,27 @@
 									)
 								)
 							)
-						   )
-					  )
+						)
+					)
 			(do
-				(wcar* (car/hmset
-						   (beeminder-redis-key email)
-						   :username username
-						   :access_token access_token
-						   ))
-				(redirect "/")
+				(wcar*
+					(car/hmset
+						(beeminder-redis-key username)
+						:username username
+						:access_token access_token
+					)
+				)
+				(assoc
+					(redirect "/")
+					:session
+					{
+						:beeminder-username username
+					}
 				)
 			)
 		)
 	)
+)
 
 (defn beeminder-set-goal [req]
 	(let
