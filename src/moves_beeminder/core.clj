@@ -313,7 +313,7 @@
 		(doseq [email emails]
 			(let
 				[
-					beeminder (-> (beeminder-redis-key email) car/hgetall* wcar* keywordize-keys)
+					beeminder (if (not (nil? email)) (-> (beeminder-redis-key email) car/hgetall* wcar* keywordize-keys))
 					username (:username beeminder)
 					moves (-> (moves-redis-key email) car/hgetall* wcar* keywordize-keys)
 				]
