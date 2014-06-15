@@ -39,7 +39,6 @@
 			<h1>Moves Beeminder import</h1>
 			<div class="active row" id="home">
 				<div class="col-md-7">
-					<h3>Account info</h3>
 					<ol>
 						<li>
 							{{#beeminder-username}}Beeminder username is {{beeminder-username}}{{/beeminder-username}}
@@ -49,23 +48,13 @@
 							{{#moves-account}}Moves account is {{moves-account}}{{/moves-account}}
 							{{^moves-account}}<a href="https://api.moves-app.com/oauth/v1/authorize?response_type=code&client_id={{moves-client-id}}&scope=activity&redirect_uri={{base-url}}/moves_auth">Authenticate with Moves</a>{{/moves-account}}
 						</li>
+						<li>
+							{{#beeminder-chosen-goal}}Beeminder chosen goal is <a href="/beeminder/choose-goal">{{beeminder-chosen-goal}}</a>{{/beeminder-chosen-goal}}
+							{{^beeminder-chosen-goal}}Choose <a href="/beeminder/choose-goal">Beeminder goal</a>{{/beeminder-chosen-goal}}
+						</li>
 					</ol>
 					<a href="/import" class="btn btn-danger active" role="button">Import data</a>
 				</div>
-			</div>
-			<div class="row col-md-7" id="goals">
-				<h3>Beeminder goals</h3>
-				<form role="form" class="form-horizontal" action="/beeminder/set-goal" method="POST">
-					{{#beeminder-goals}}
-					<div class="radio">
-						<label>
-							<input type="radio" name="goal" value="{{key}}" {{checked}}/>
-							{{value}}
-						</label>
-					</div>
-					{{/beeminder-goals}}
-					<button type="submit" class="btn btn-default">Set goal</button>
-				</form>
 			</div>
 		</div>
 	</body>

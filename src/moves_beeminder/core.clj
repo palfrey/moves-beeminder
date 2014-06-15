@@ -62,11 +62,20 @@
 	(apply merge (map #(sorted-map-by time/after? (format/parse (format/formatter "yyyyMMdd") (:date %)) (compact-moves-date (:summary %))) (keywordize-keys data)))
 	)
 
+(def beeminder-base "https://www.beeminder.com/api/v1/users/me")
+
 (defn beeminder-goals-list [access-token]
-	(let [raw-data (keywordize-keys (read-str (:body @(http/get (str "https://www.beeminder.com/api/v1/users/me/goals.json?access_token=" access-token)))))]
-		(apply merge (map #(sorted-map (:slug %) (:title %)) raw-data))
+	(let
+		[
+			page @(http/get (str beeminder-base "/goals.json?access_token=" access-token))
+			raw-data (-> page :body read-str keywordize-keys)
+		]
+		(if (not= (:status page) 200)
+			nil
+			(apply merge (map #(sorted-map (:slug %) (:title %)) raw-data))
 		)
 	)
+)
 
 (defn pp [data]
 	(with-out-str (pprint/pprint data))
@@ -95,10 +104,7 @@
 			logged-in (not (nil? beeminder-username))
 			moves-account (if logged-in (wcar* (car/hget (moves-redis-key beeminder-username) :user_id)))
 			moves-access-token (if logged-in (wcar* (car/hget (moves-redis-key beeminder-username) :access-token)))
-			beeminder-access-token (if logged-in (beeminder-get-token beeminder-username))
-			beeminder-goals (if logged-in (beeminder-goals-list beeminder-access-token))
 			beeminder-chosen-goal (if logged-in (wcar* (car/hget (beeminder-redis-key beeminder-username) :chosen-goal)))
-			beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
 		]
 		(render-resource
 			"templates/index.html"
@@ -106,9 +112,8 @@
 				:base-url              base-url
 				:moves-account         moves-account
 				:moves-client-id       moves-client-id
-				:beeminder-username    beeminder-username
 				:beeminder-client-id   beeminder-client-id
-				:beeminder-goals       (-> beeminder-goals beeminder-add-no-goal displayable-hashmap ((partial set-checked-goal beeminder-chosen-goal)))
+				:beeminder-username    beeminder-username
 				:beeminder-chosen-goal beeminder-chosen-goal
 				:message               (-> req :params :message)
 			}
@@ -200,8 +205,6 @@
 		)
 	)
 )
-
-(def beeminder-base "https://www.beeminder.com/api/v1/users/me")
 
 (defn dt-at-midnight [dt]
 	(time/date-time (time/year dt) (time/month dt) (time/day dt))
@@ -331,11 +334,53 @@
 	)
 )
 
+(def beeminder-redirect
+	(redirect "/?message=Need to authenticate to Beeminder")
+)
+
+(defn beeminder-clear-user [req username]
+	(wcar* (car/del (beeminder-redis-key username)))
+	(println beeminder-redirect)
+	(assoc beeminder-redirect
+		:session {}
+	)
+)
+
+(defn beeminder-choose-goal [req]
+	(let
+		[
+			username (get-session req :beeminder-username)
+		]
+		(if (nil? username)
+			beeminder-redirect
+			(let
+				[
+					beeminder-access-token (beeminder-get-token username)
+					logged-in (not (nil? beeminder-access-token))
+					beeminder-goals (if logged-in (beeminder-goals-list beeminder-access-token) nil)
+					beeminder-chosen-goal (wcar* (car/hget (beeminder-redis-key username) :chosen-goal))
+					beeminder-goals (if logged-in (-> beeminder-goals beeminder-add-no-goal displayable-hashmap ((partial set-checked-goal beeminder-chosen-goal))))
+				]
+				(if (nil? beeminder-goals)
+					(beeminder-clear-user req username)
+					(render-resource
+						"templates/beeminder-goals.html"
+						{
+							:beeminder-goals beeminder-goals
+						}
+					)
+				)
+			)
+		)
+	)
+)
+
 (defroutes all-routes
 	(GET "/" [] main-page)
 	(GET "/moves_auth" [] moves-auth-callback)
 	(GET "/beeminder_auth" [] beeminder-auth-callback)
 	(POST "/beeminder/set-goal" [] beeminder-set-goal)
+	(GET "/beeminder/choose-goal" [] beeminder-choose-goal)
 	(GET "/import" [] import-page)
 	(GET "/beeminder-auth-fix" [] beeminder-auth-fix)
 	(route/files "/" {:root "public"})

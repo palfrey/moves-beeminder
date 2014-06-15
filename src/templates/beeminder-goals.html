@@ -7,7 +7,7 @@
 		<title>Moves Beeminder import</title>
 
 		<!-- Bootstrap -->
-		<link href="/css/bootstrap.min.css" rel="stylesheet">
+        <link href="/css/bootstrap.min.css" rel="stylesheet">
 
 		<!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
 		<!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
@@ -20,15 +20,23 @@
 		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
 		<!-- Include all compiled plugins (below), or include individual files as needed -->
-		<script src="/js/bootstrap.min.js"></script>
+        <script src="/js/bootstrap.min.js"></script>
 		<div class="container-fluid">
-			<h1>Moves Beeminder import</h1>
-			<div class="active row" id="home">
-				<div class="col-md-7">
-					Finished importing for {{beeminder-username}} into goal {{beeminder-chosen-goal}}.<br />
-					Results: {{import-results}}<br />
+			<h1>Choose Beeminder goal</h1>
+			<div class="row col-md-7" id="goals">
+				<form role="form" class="form-horizontal" action="/beeminder/set-goal" method="POST">
+					{{#beeminder-goals}}
+					<div class="radio">
+						<label>
+							<input type="radio" name="goal" value="{{key}}" {{checked}}/>
+							{{value}}
+						</label>
+					</div>
+					{{/beeminder-goals}}
+					<button type="submit" class="btn btn-default">Set goal</button><br />
+					<hr />
 					<a href="/" class="btn btn-success active" role="button">Return to main page</a>
-				</div>
+				</form>
 			</div>
 		</div>
 	</body>
