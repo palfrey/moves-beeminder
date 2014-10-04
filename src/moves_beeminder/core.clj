@@ -221,6 +221,21 @@
 		)
 	)
 
+(defn nice-result [req]
+	(cond
+		(= (:status req) 200)
+			{
+				:success true
+				:detail req
+			}
+		:else
+			{
+				:error (read-str (:body req))
+				:detail req
+			}
+	)
+)
+
 (defn import-data [email]
 	(let
 		[
@@ -255,7 +270,7 @@
 								(nil? (moves-data key))
 									{:warning (str "empty moves data for " (format/unparse (format/formatters :date) key))}
 								(not (contains? datapoints key-when))
-									@(http/post
+									(nice-result @(http/post
 										(str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints.json")
 										{:form-params
 											{
@@ -265,9 +280,9 @@
 												"comment"      (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
 											}
 										}
-									)
+									))
 								(not= (int (:value (datapoints key-when))) (moves-data key))
-									@(http/put
+									(nice-result @(http/put
 										(str beeminder-base "/goals/" beeminder-chosen-goal "/datapoints/" (:id (datapoints key-when)) ".json?access_token=" beeminder-access-token)
 										{:query-params
 											{
@@ -276,7 +291,7 @@
 												"comment"   (str "Set by importer at " (format/unparse (format/formatters :rfc822) (time/now)))
 											}
 										}
-									)
+									))
 							)
 						)
 					)
