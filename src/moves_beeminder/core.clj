@@ -215,7 +215,7 @@
 		[
 			moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
 			moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
-			moves-data (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=7" {:oauth-token moves-access-token})))
+			moves-data (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=31" {:oauth-token moves-access-token})))
 			]
 		(compact-moves-data moves-data)
 		)
