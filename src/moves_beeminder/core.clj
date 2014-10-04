@@ -394,6 +394,28 @@
 	)
 )
 
+(defn import-all [req]
+	(let
+		[
+			keys (wcar* (car/keys "*:beeminder"))
+			usernames (filter #(not (substring? "@" %)) (map #(first (str/split % #":")) keys))
+			results
+			(map #(let [username %
+						{:keys [goal user results]} (import-data username)
+						results (filter (complement nil?) results)]
+					(wcar* (car/hset username :last-updated (coerce/to-long (time/now))))
+					{:user user :results results}
+				)
+				usernames
+			)]
+		(render-resource "templates/import-all.html"
+			{
+				:usernames (map pp results)
+			}
+		)
+	)
+)
+
 (defroutes all-routes
 	(GET "/" [] main-page)
 	(GET "/moves_auth" [] moves-auth-callback)
@@ -401,6 +423,7 @@
 	(POST "/beeminder/set-goal" [] beeminder-set-goal)
 	(GET "/beeminder/choose-goal" [] beeminder-choose-goal)
 	(GET "/import" [] import-page)
+	(GET "/import-all" [] import-all)
 	(GET "/beeminder-auth-fix" [] beeminder-auth-fix)
 	(route/files "/" {:root "public"})
 	(route/not-found "Page not found")
