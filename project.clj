@@ -14,6 +14,7 @@
 		[ring "1.2.1"]
 		[clj-time "0.6.0"]
 		[environ "0.5.0"]
+		[slingshot "0.11.0"]
 	]
 	:uberjar-name "moves-beeminder-standalone.jar"
 	:profiles {

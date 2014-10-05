@@ -15,6 +15,7 @@
 		[ring.middleware.session :only [wrap-session]]
 		[taoensso.carmine :as car :refer (wcar)]
 		[moves-beeminder.config]
+		[slingshot.slingshot :only [throw+ try+]]
 	)
 	(:require
 		[clj-time.core :as time]
@@ -212,14 +213,16 @@
 
 (defn get-moves-data [email]
 	(let
-		[
-			moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
-			moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))
-			moves-data (read-str (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=31" {:oauth-token moves-access-token})))
+		[moves-access-token (wcar* (car/hget (moves-redis-key email) :access-token))]
+		(if (nil? moves-access-token) (throw+ {:type :bad-moves-account}))
+		(let [
+				moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
+				raw-moves-data (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=31" {:oauth-token moves-access-token}))
 			]
-		(compact-moves-data moves-data)
+			(compact-moves-data (read-str raw-moves-data))
 		)
 	)
+)
 
 (defn nice-result [req]
 	(cond
@@ -400,11 +403,16 @@
 			keys (wcar* (car/keys "*:beeminder"))
 			usernames (filter #(not (substring? "@" %)) (map #(first (str/split % #":")) keys))
 			results
-			(map #(let [username %
+			(map #(try+
+					(let [username %
 						{:keys [goal user results]} (import-data username)
 						results (filter (complement nil?) results)]
-					(wcar* (car/hset username :last-updated (coerce/to-long (time/now))))
-					{:user user :results results}
+						(wcar* (car/hset username :last-updated (coerce/to-long (time/now))))
+						{:user user :results results}
+					)
+					(catch [:type :bad-moves-account] {}
+						{:user % :error "Bad moves account"}
+					)
 				)
 				usernames
 			)]
