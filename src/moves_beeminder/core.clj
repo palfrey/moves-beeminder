@@ -250,7 +250,7 @@
 			beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
 			]
 		(if (= beeminder-chosen-goal "")
-			(throw (Exception. "No valid goal set!"))
+			(throw+ {:type :empty-goal})
 			(let
 				[
 					raw-data
@@ -412,6 +412,9 @@
 					)
 					(catch [:type :bad-moves-account] {}
 						{:user % :error "Bad moves account"}
+					)
+					(catch Object _
+						{:user % :error (:throwable &throw-context)}
 					)
 				)
 				usernames
