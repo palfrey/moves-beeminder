@@ -217,9 +217,10 @@
 		(if (nil? moves-access-token) (throw+ {:type :bad-moves-account}))
 		(let [
 				moves-account (wcar* (car/hget (moves-redis-key email) :user_id))
-				raw-moves-data (:body @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=31" {:oauth-token moves-access-token}))
+				{:keys [status headers body error] :as resp} @(http/get "https://api.moves-app.com/api/1.1/user/summary/daily?pastDays=31" {:oauth-token moves-access-token})
 			]
-			(compact-moves-data (read-str raw-moves-data))
+			(if error (throw+ (:type :bad-moves-response :resp resp)))
+			(compact-moves-data (read-str body))
 		)
 	)
 )
