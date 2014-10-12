@@ -72,7 +72,7 @@
 			raw-data (-> page :body read-str keywordize-keys)
 		]
 		(if (not= (:status page) 200)
-			nil
+			(throw+ {:type :bad-goals-page :data page})
 			(apply merge (map #(sorted-map (:slug %) (:title %)) raw-data))
 		)
 	)
