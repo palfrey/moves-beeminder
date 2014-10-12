@@ -207,9 +207,12 @@
 	)
 )
 
-(defn dt-at-midnight [dt]
-	(time/date-time (time/year dt) (time/month dt) (time/day dt))
+(defn dt-at-midnight [tzs dt]
+	(let [tz (DateTimeZone/forID tzs)
+		offset (if (> (.getOffset tz dt) 0) 0 -1)]
+		(time/plus (time/date-time (time/year dt) (time/month dt) (time/day dt)) (time/days 1))
 	)
+)
 
 (defn get-moves-data [email]
 	(let
@@ -249,7 +252,11 @@
 			beeminder-goals (beeminder-goals-list beeminder-access-token)
 			beeminder-chosen-goal (wcar* (car/hget (beeminder-redis-key email) :chosen-goal))
 			beeminder-chosen-goal (if (contains? beeminder-goals beeminder-chosen-goal) beeminder-chosen-goal "")
+			beeminder-timezone (wcar* (car/hget (beeminder-redis-key email) :timezone))
 			]
+		(if (= beeminder-timezone nil)
+			(throw+ {:type :empty-timezone})
+		)
 		(if (= beeminder-chosen-goal "")
 			(throw+ {:type :empty-goal})
 			(let
@@ -261,7 +268,7 @@
 						)
 						:body read-str keywordize-keys
 					)
-					datapoints (apply merge (map #(sorted-map (coerce/to-epoch (dt-at-midnight (coerce/from-long (* (:timestamp %) 1000)))) %) raw-data))
+					datapoints (apply merge (map #(sorted-map (coerce/to-epoch (dt-at-midnight beeminder-timezone (coerce/from-long (* (:timestamp %) 1000)))) %) raw-data))
 				]
 				{
 					:goal beeminder-chosen-goal
@@ -398,6 +405,21 @@
 	)
 )
 
+(defn timezone [username]
+	(-> @(http/get (str "https://www.beeminder.com/api/v1/users/" username ".json")
+			 {:query-params
+				{
+				"access_token" (beeminder-get-token username)
+				}
+			  }
+	)
+		:body
+		read-str
+		keywordize-keys
+		:timezone
+		)
+)
+
 (defn import-all [req]
 	(let
 		[
@@ -405,6 +427,9 @@
 			usernames (filter #(not (substring? "@" %)) (map #(first (str/split % #":")) keys))
 			results
 			(map #(try+
+					(if (= (wcar* (car/hget (beeminder-redis-key %) :timezone)) nil)
+						(wcar* (car/hset (beeminder-redis-key %) :timezone (timezone %)))
+					)
 					(let [username %
 						{:keys [goal user results]} (import-data username)
 						results (filter (complement nil?) results)]
